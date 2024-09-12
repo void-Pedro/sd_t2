@@ -1,38 +1,54 @@
-import paho.mqtt.client as mqtt
 import redis
+import time
+import random
 import json
 
-# Conectar ao Redis
-r = redis.Redis(host='redis', port=6379, decode_responses=True)
+r = redis.StrictRedis(host='bancoRedis', port=6379, db=0)
 
-# Conectar ao Broker MQTT
-client = mqtt.Client("Almoxarifado")
-MQTT_BROKER = "mqtt_broker"
+# Definir níveis de estoque
+NIVEL_VERDE = 150
+NIVEL_AMARELO = 80
+NIVEL_VERMELHO = 30
 
-# Níveis críticos de estoque
-limite_critico = {
-    "parte1": 200,
-    "parte2": 150,
-    "parte3": 100,
-}
+def definir_cor(quantidade):
+    if quantidade >= NIVEL_VERDE:
+        return 'green'
+    elif NIVEL_AMARELO <= quantidade < NIVEL_VERDE:
+        return 'yellow'
+    else:
+        return 'red'
 
-def monitorar_estoque():
-    for parte, limite in limite_critico.items():
-        quantidade = int(r.hget("almoxarifado", parte) or 0)
-        print(f"Estoque de {parte}: {quantidade}")
-        if quantidade < limite:
-            # Pedido de reabastecimento
-            pedido = json.dumps({"parte": parte, "quantidade": limite - quantidade})
-            client.publish("reabastecimento", pedido)
-            print(f"Pedido de reabastecimento enviado para {parte}")
+def verificar_estoque():
+    for i in range(1, 101):
+        dados_peca = r.get(f'parte_{i}')
+        if dados_peca:
+            dados_peca = json.loads(dados_peca)
+            quantidade = dados_peca['quantidade']
+            cor = definir_cor(quantidade)
+            dados_peca['cor'] = cor
+            r.set(f'parte_{i}', json.dumps(dados_peca))
+            
+            print(f'Peça {i} - {quantidade} unidades, Cor: {cor}')
+            
+            # Se tiver com poucas peças faz a solicitação (joga no redis)
+            if quantidade < NIVEL_VERMELHO:
+                chave_solicitacao = f'solicitacao_{i}'
+                if not r.exists(chave_solicitacao):
+                    r.setex(chave_solicitacao, 3600, 'Pendente')
+        else:
+            print(f'Peça {i} - Estoque não definido.')
 
-# Callback para conexão
-def on_connect(client, userdata, flags, rc):
-    print("Conectado ao broker MQTT")
+def inicializar_estoque():
+    for i in range(1, 101):
+        quantidade_inicial = random.randint(30, 100)
+        cor_inicial = definir_cor(quantidade_inicial)
+        dados_peca = json.dumps({'quantidade': quantidade_inicial, 'cor': cor_inicial})
+        r.set(f'parte_{i}', dados_peca)
+    print("Estoque inicializado para 100 peças.")
 
-client.on_connect = on_connect
-client.connect(MQTT_BROKER)
+if __name__ == "__main__":
+    inicializar_estoque()
 
-# Loop principal para monitorar o estoque
-while True:
-    monitorar_estoque()
+    while True:
+        verificar_estoque()
+        time.sleep(10)
