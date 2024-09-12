@@ -32,9 +32,8 @@ def verificar_estoque():
             
             # Se tiver com poucas peças faz a solicitação (joga no redis)
             if quantidade < NIVEL_VERMELHO:
-                chave_solicitacao = f'solicitacao_{i}'
-                if not r.exists(chave_solicitacao):
-                    r.setex(chave_solicitacao, 3600, 'Pendente')
+                r.publish('pedidos_compra_almoxarifado', f'parte_{i}')
+                print(f'Solicitação de compra enviada para peça {i}')
         else:
             print(f'Peça {i} - Estoque não definido.')
 

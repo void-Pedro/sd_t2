@@ -14,11 +14,10 @@ class Parte:
 
 class Fornecedor:
     def __init__(self, redis_host='bancoRedis', redis_port=6379, numero_de_partes=100):
-        self.redis_client = redis.StrictRedis(host=bancoRedis, port=redis_port, db=0)
+        self.redis_client = redis.StrictRedis(host=redis_host, port=redis_port, db=0)
         self.estoque = self.gerar_estoque(numero_de_partes)
 
     def gerar_estoque(self, numero_de_partes):
-        # Cria um dicionário com as partes e suas quantidades
         estoque = {}
         for i in range(1, numero_de_partes + 1):
             nome_parte = f"parte_{i}"

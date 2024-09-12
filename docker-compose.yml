@@ -1,33 +1,32 @@
-version: '3'
+version: '3.8'
+
 services:
   redis:
-    image: "redis:alpine"
+    image: redis:alpine
     container_name: redis
+    networks:
+      - redis_network
     ports:
       - "6379:6379"
-  
-  mqtt_broker:
-    image: "eclipse-mosquitto"
-    container_name: mqtt_broker
-    ports:
-      - "1883:1883"
+    volumes:
+      - redis-data:/data
 
-  fornecedor:
-    build: ./fornecedor
-    depends_on:
-      - mqtt_broker
-      - redis
-    container_name: fornecedor
-
-  almoxarifado:
-    build: ./almoxarifado
-    depends_on:
-      - mqtt_broker
-      - redis
-    container_name: almoxarifado
-
-  linha_producao:
-    build: ./linha_producao
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: app
+    networks:
+      - redis_network
     depends_on:
       - redis
-    container_name: linha_producao
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+
+networks:
+  redis_network:
+    external: true
+
+volumes:
+  redis-data:
