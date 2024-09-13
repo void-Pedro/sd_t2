@@ -24,9 +24,40 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
 
-networks:
-  redis_network:
-    external: true
+  linha_producao:
+    build:
+      context: ./linha_producao
+      dockerfile: Dockerfile
+    container_name: linha_producao
+    networks:
+      - redis_network
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
 
-volumes:
-  redis-data:
+  fornecedor:
+    build:
+      context: ./fornecedor
+      dockerfile: Dockerfile
+    container_name: fornecedor
+    networks:
+      - redis_network
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+
+  deposito:
+    build:
+      context: ./deposito
+      dockerfile: Dockerfile
+    container_name: deposito
+    networks:
+      - redis_network
+    depends_on:
+      - redis
+    environment:
+      -
